@@ -11,11 +11,18 @@ class CancelJob:
 
 
 class Planner:
-    jobs: Set["Job"] = {}
+    jobs: Set["Job"] = set()
 
     @classmethod
     def every(cls, interval: int = 1) -> "Job":
         return Job(cls, interval)
+
+    @classmethod
+    def run_pending(cls) -> None:
+        for job in cls.jobs:
+            ret = job.run()
+            if ret is CancelJob:
+                cls.jobs.remove(job)
 
 
 class Job:
@@ -41,7 +48,7 @@ class Job:
 
     @property
     def seconds(self) -> "Job":
-        return self
+        return self.second
 
     @property
     def minute(self) -> "Job":
@@ -113,12 +120,10 @@ class Job:
             return None
         if self.stop and self.now > self.stop:
             return CancelJob
-        if not self.now >= self.next_run:
+        if self.now < self.next_run:
             return None
 
-        ret = self._job(*self._args, **self._kwargs)
-        if ret is Type[CancelJob]:
-            return CancelJob
+        self._job(*self._args, **self._kwargs)
         self.next_run = self.calculate_next_run()
         self.last_run = self.now
         return None
